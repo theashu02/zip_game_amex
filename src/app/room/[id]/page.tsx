@@ -25,6 +25,7 @@ interface ClientRoom {
   players: ClientRoomPlayer[];
   status: "waiting" | "playing" | "finished";
   createdAt: number;
+  startedAt?: number;
 }
 
 const pageBg = "min-h-screen w-full"; // Background handled by globals.css
@@ -250,23 +251,25 @@ export default function RoomPage() {
 
   return (
     <main className={`${pageBg} px-4 py-8 flex flex-col items-center`}>
-      <div className="w-full max-w-6xl grid gap-8 lg:grid-cols-[1fr_300px]">
+      <div className="w-full max-w-6xl flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_300px] items-start">
         {/* MAIN GAME AREA */}
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-6 w-full">
           <div className="w-full flex justify-between items-center max-w-[500px]">
             <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200">
               Level {myPlayer.currentLevel + 1} <span className="text-slate-400 text-base font-normal">/ {room.levels.length}</span>
             </h2>
             <div className="text-xs font-bold font-mono bg-white/50 text-slate-500 border border-slate-200 px-3 py-1.5 rounded-full backdrop-blur-sm dark:bg-slate-800/50 dark:border-slate-700">Room: {room.id}</div>
           </div>
+          {/* Constrain header width to match grid better on large screens, but allow full width on mobile */}
+          <div className="w-full max-w-[500px]">
+            <GameHeader difficulty={currentPuzzle.difficulty} date={currentPuzzle.date} gridSize={currentPuzzle.size} isComplete={false} startTime={room.startedAt} />
+          </div>
 
-          <GameHeader difficulty={currentPuzzle.difficulty} date={currentPuzzle.date} gridSize={currentPuzzle.size} isComplete={false} />
-
-          <ZipGrid key={currentPuzzle.id} puzzle={currentPuzzle} onComplete={handleLevelComplete} />
+          <ZipGrid key={currentPuzzle.id} puzzle={currentPuzzle} onComplete={handleLevelComplete} startTime={room.startedAt} />
         </div>
 
-        {/* SIDEBAR */}
-        <div className="hidden lg:block space-y-4">
+        {/* SIDEBAR - Now visible on all devices, stacked below on mobile */}
+        <div className="w-full max-w-[500px] lg:max-w-none space-y-4 mx-auto lg:mx-0">
           <Card className="bg-white/80 backdrop-blur-md border-white/20 shadow-lg dark:bg-slate-900/80 dark:border-slate-800">
             <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Live Progress</CardTitle>

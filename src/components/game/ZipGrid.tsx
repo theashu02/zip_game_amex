@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 interface ZipGridProps {
   puzzle: Puzzle;
   onComplete: (path: Cell[], timeMs: number) => void;
+  startTime?: number; // Optional, defaults to mount time if not provided
 }
 
 const isAdjacent = (a: Cell, b: Cell): boolean => {
@@ -15,10 +16,13 @@ const isAdjacent = (a: Cell, b: Cell): boolean => {
   return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
 };
 
-export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
+export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }: ZipGridProps) {
   const [path, setPath] = useState<Cell[]>([]);
   const [isComplete, setIsComplete] = useState(false);
-  const [startTime] = useState(() => Date.now());
+  // If prop provided, use it. Else use mount time (for daily single player)
+  const [internalStartTime] = useState(() => Date.now());
+  const effectiveStartTime = propStartTime ?? internalStartTime;
+
   const [finalTime, setFinalTime] = useState(0);
   const gridRef = useRef<HTMLDivElement>(null);
   const isDrawingRef = useRef(false);
@@ -67,22 +71,51 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
     [anchors, size],
   );
 
+  // Helper to get intermediate cells for fast drags
+  const getInterpolatedCells = (start: Cell, end: Cell): Cell[] => {
+    const cells: Cell[] = [];
+    const dr = end.row - start.row;
+    const dc = end.col - start.col;
+
+    // Only interpolate straight lines to avoid ambiguity
+    if (dr !== 0 && dc !== 0) return [];
+
+    const steps = Math.max(Math.abs(dr), Math.abs(dc));
+    const rStep = dr === 0 ? 0 : dr / steps;
+    const cStep = dc === 0 ? 0 : dc / steps;
+
+    for (let i = 1; i <= steps; i++) {
+      cells.push({
+        row: start.row + Math.round(rStep * i),
+        col: start.col + Math.round(cStep * i),
+      });
+    }
+    return cells;
+  };
+
   const handleCellInteraction = useCallback(
-    (row: number, col: number) => {
+    (targetRow: number, targetCol: number) => {
       if (isComplete) return;
 
       setPath((prev) => {
-        const existingIdx = prev.findIndex((c) => c.row === row && c.col === col);
-        let newPath = prev;
+        // 1. Handle clicking/dragging on an EXISTING cell (backtracking or no-op)
+        const existingIdx = prev.findIndex((c) => c.row === targetRow && c.col === targetCol);
 
-        if (existingIdx === prev.length - 1) return prev;
+        if (existingIdx !== -1) {
+          // If it's the very last cell, do nothing (we are still on it)
+          if (existingIdx === prev.length - 1) return prev;
+          // Otherwise, we cut the path back to this point (undo/backtrack)
+          return prev.slice(0, existingIdx + 1);
+        }
 
-        if (existingIdx >= 0) {
-          newPath = prev.slice(0, existingIdx + 1);
-        } else if (prev.length === 0) {
+        // 2. Handle adding NEW cells
+        let newPath = [...prev];
+
+        if (prev.length === 0) {
+          // Must start at anchor #1
           const anchor1 = anchors.find((a) => a.number === 1);
-          if (anchor1 && anchor1.row === row && anchor1.col === col) {
-            newPath = [{ row, col }];
+          if (anchor1 && anchor1.row === targetRow && anchor1.col === targetCol) {
+            newPath = [{ row: targetRow, col: targetCol }];
           } else {
             // Invalid start
             setIsShaking(true);
@@ -90,15 +123,42 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
           }
         } else {
           const lastCell = prev[prev.length - 1];
-          if (!isAdjacent(lastCell, { row, col })) return prev;
-          newPath = [...prev, { row, col }];
+          // Check interpolation for fast drags
+          const steps = getInterpolatedCells(lastCell, { row: targetRow, col: targetCol });
+
+          if (steps.length > 0) {
+            // Try to add all steps sequentially
+            for (const step of steps) {
+              // Verify adjacency just in case (interpolation logic guarantees it for straight lines, but good to be safe)
+              const currentLast = newPath[newPath.length - 1];
+              if (isAdjacent(currentLast, step)) {
+                // Verify not already in path (handled by existingIdx check above, but purely for `steps` loop)
+                // Actually, if we cross our own path during interpolation, we should probably stop or cut?
+                // For simplicity: Simple "Snake" logic: You can't cross yourself.
+                // But wait, "backtracking" is handled by existingIdx.
+                // If we interpolate over an existing cell, we should probably stop there or handle it?
+                // Let's keep it simple: Only add if NOT in path.
+                const isInPath = newPath.some((c) => c.row === step.row && c.col === step.col);
+                if (!isInPath) {
+                  newPath.push(step);
+                }
+              }
+            }
+          } else {
+            // Fallback to strict adjacency (for single step or diagonal fail)
+            if (isAdjacent(lastCell, { row: targetRow, col: targetCol })) {
+              newPath.push({ row: targetRow, col: targetCol });
+            } else {
+              return prev;
+            }
+          }
         }
 
         // Check completion immediately
-        if (newPath !== prev && checkCompletion(newPath)) {
+        if (newPath !== prev && newPath.length > prev.length && checkCompletion(newPath)) {
           setIsComplete(true);
           isDrawingRef.current = false;
-          const elapsed = Date.now() - startTime;
+          const elapsed = Date.now() - effectiveStartTime;
           setFinalTime(elapsed);
           onComplete(newPath, elapsed);
         }
@@ -106,40 +166,69 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
         return newPath;
       });
     },
-    [anchors, isComplete, checkCompletion, onComplete, startTime],
+    [anchors, isComplete, checkCompletion, onComplete, effectiveStartTime],
   );
+
+  const [gridRect, setGridRect] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+
+    // Initial measure
+    const rect = gridRef.current.getBoundingClientRect();
+    setGridRect({ width: rect.width, height: rect.height });
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setGridRect({ width: entry.contentRect.width, height: entry.contentRect.height });
+      }
+    });
+
+    observer.observe(gridRef.current);
+    return () => observer.disconnect();
+  }, [gridRef]);
+
+  // Derive dynamic metrics
+  const dynamicCellSize = useMemo(() => {
+    if (!gridRect) return cellSize; // Fallback
+    // Width = 2*padding + size*cell + (size-1)*gap
+    // size*cell = Width - 2*padding - (size-1)*gap
+    const available = gridRect.width - 2 * padding - (size - 1) * gap;
+    return available / size;
+  }, [gridRect, size]);
 
   const getCellFromPoint = (clientX: number, clientY: number): { row: number; col: number } | null => {
     const grid = gridRef.current;
     if (!grid) return null;
     const rect = grid.getBoundingClientRect();
 
-    // Safety check for zero-dimension (hidden) grid
     if (rect.width === 0 || rect.height === 0) return null;
 
-    // Calculate dynamic scale based on current rendered width vs theoretical fixed width
-    // Theoretical width = 2*padding + size*currentCellSize + (size-1)*gap
-    // If we rely on CSS transform:scale, getBoundingClientRect handles it for us automatically!
-    // But if we use flexible width (width: 100%), we need to recalculate.
+    // Calculate effective cell size based on rendered content box
+    const contentWidth = rect.width - 2 * padding;
+    const contentHeight = rect.height - 2 * padding;
 
-    // Let's assume we use flexible width.
-    // The relative position in % is safer.
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    if (contentWidth <= 0 || contentHeight <= 0) return null;
 
-    // Relative coordinates 0..1
-    const xRel = x / rect.width;
-    const yRel = y / rect.height;
+    // Relative to the inner content area
+    const x = clientX - rect.left - padding;
+    const y = clientY - rect.top - padding;
+
+    // Normalize
+    const xRel = x / contentWidth;
+    const yRel = y / contentHeight;
+
+    // Clamp to 0..1 to allow clicking in the padding area (forgiveness)
+    const xClamped = Math.max(0, Math.min(1, xRel));
+    const yClamped = Math.max(0, Math.min(1, yRel));
 
     // Map to row/col
-    const col = Math.floor(xRel * size);
-    const row = Math.floor(yRel * size);
+    let col = Math.floor(xClamped * size);
+    let row = Math.floor(yClamped * size);
 
-    // Boundary check
-    if (col < 0 || col >= size || row < 0 || row >= size) return null;
-
-    // Optional: precise hit testing inside the cell vs gap
-    // Since we want forgiveness, just accepting the routed column is fine.
+    // Edge case: if xClamped is exactly 1, floor gives size. Clamp to size-1.
+    if (col >= size) col = size - 1;
+    if (row >= size) row = size - 1;
 
     return { row, col };
   };
@@ -156,11 +245,8 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
       if (path.length === 0) {
         const anchor1 = anchors.find((a) => a.number === 1);
         if (!anchor1 || anchor1.row !== cell.row || anchor1.col !== cell.col) {
-          // User tried to start somewhere else
-          // Ideally show a transient tooltip or shake animation
-          // For now, let's just log or ignore.
-          // We'll add a visual "shake" effect to the "1" cell maybe?
-          // Or just do nothing.
+          // User tried to start somewhere else -> Shake
+          setIsShaking(true);
           return;
         }
       }
@@ -208,11 +294,8 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
     return segments;
   };
 
-  useEffect(() => {
-    const handler = (e: Event) => e.preventDefault();
-    document.addEventListener("contextmenu", handler);
-    return () => document.removeEventListener("contextmenu", handler);
-  }, []);
+  // Context menu prevention removed to allow Inspect Element
+  // Touch action: none handles most mobile issues
 
   // Completion check moved to handleCellInteraction to avoid useEffect cascading updates
   // useEffect(() => {
@@ -226,7 +309,7 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
   //   }
   // }, [path, isComplete, checkCompletion, onComplete, startTime]);
 
-  const totalSize = size * cellSize + (size - 1) * gap + padding * 2;
+  const totalSize = gridRect ? gridRect.width : size * cellSize + (size - 1) * gap + padding * 2; // Fallback if gridRect not yet available
   const segments = getConnectionSegments();
 
   return (
@@ -253,7 +336,11 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
 
       <div
         ref={gridRef}
-        className={cn("relative grid aspect-square w-full max-w-[500px] select-none touch-none rounded-3xl border border-white/40 bg-white/60 shadow-xl backdrop-blur-sm transition-all dark:border-slate-800 dark:bg-slate-900/50", isComplete && "shadow-2xl shadow-sky-500/10")}
+        className={cn(
+          "relative grid aspect-square w-full max-w-[500px] select-none touch-none rounded-3xl border border-white/40 bg-white/60 shadow-xl backdrop-blur-sm transition-all dark:border-slate-800 dark:bg-slate-900/50",
+          isComplete && "shadow-2xl shadow-sky-500/10",
+          isShaking && "animate-shake border-red-400 dark:border-red-600",
+        )}
         style={{
           // Use CSS grid for layout
           gridTemplateColumns: `repeat(${size}, 1fr)`,
@@ -267,12 +354,12 @@ export default function ZipGrid({ puzzle, onComplete }: ZipGridProps) {
         onPointerLeave={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <svg className="pointer-events-none absolute left-0 top-0 z-30" width={totalSize} height={totalSize}>
+        <svg className="pointer-events-none absolute left-0 top-0 z-30 h-full w-full" width="100%" height="100%" viewBox={`0 0 ${totalSize} ${totalSize}`} preserveAspectRatio="none">
           {segments.map((seg) => {
-            const x1 = padding + seg.c1 * (cellSize + gap) + cellSize / 2;
-            const y1 = padding + seg.r1 * (cellSize + gap) + cellSize / 2;
-            const x2 = padding + seg.c2 * (cellSize + gap) + cellSize / 2;
-            const y2 = padding + seg.r2 * (cellSize + gap) + cellSize / 2;
+            const x1 = padding + seg.c1 * (dynamicCellSize + gap) + dynamicCellSize / 2;
+            const y1 = padding + seg.r1 * (dynamicCellSize + gap) + dynamicCellSize / 2;
+            const x2 = padding + seg.c2 * (dynamicCellSize + gap) + dynamicCellSize / 2;
+            const y2 = padding + seg.r2 * (dynamicCellSize + gap) + dynamicCellSize / 2;
 
             return (
               <line

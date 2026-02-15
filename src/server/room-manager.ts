@@ -16,6 +16,7 @@ export interface Room {
   players: RoomPlayer[];
   status: "waiting" | "playing" | "finished";
   createdAt: number;
+  startedAt?: number;
 }
 
 // In-memory store
@@ -101,6 +102,7 @@ export const RoomManager = {
     if (!room || room.hostId !== hostPlayerId) return false;
 
     room.status = "playing";
+    room.startedAt = Date.now();
     return true;
   },
 
