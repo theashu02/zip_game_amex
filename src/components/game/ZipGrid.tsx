@@ -37,9 +37,10 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
   }, [isShaking]);
 
   const { size, anchors } = puzzle;
+  // Constants for layout
   const cellSize = 70;
-  const gap = 4;
-  const padding = 16;
+  const gap = 1;
+  const padding = 0;
 
   const anchorMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -287,20 +288,6 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
     isDrawingRef.current = false;
   };
 
-  const getConnectionSegments = () => {
-    const segments: { r1: number; c1: number; r2: number; c2: number; index: number }[] = [];
-    for (let i = 1; i < path.length; i++) {
-      segments.push({
-        r1: path[i - 1].row,
-        c1: path[i - 1].col,
-        r2: path[i].row,
-        c2: path[i].col,
-        index: i,
-      });
-    }
-    return segments;
-  };
-
   // Context menu prevention removed to allow Inspect Element
   // Touch action: none handles most mobile issues
 
@@ -317,26 +304,17 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
   // }, [path, isComplete, checkCompletion, onComplete, startTime]);
 
   const totalSize = gridRect ? gridRect.width : size * cellSize + (size - 1) * gap + padding * 2; // Fallback if gridRect not yet available
-  const segments = getConnectionSegments();
 
   return (
     <div className="flex flex-col items-center gap-5">
       <div className="flex w-full items-center justify-center gap-4">
-        <button
-          className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-          onClick={handleUndo}
-          disabled={path.length === 0 || isComplete}
-        >
+        <button className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40" onClick={handleUndo} disabled={path.length === 0 || isComplete}>
           Undo
         </button>
         <span className="min-w-[60px] text-center text-sm font-semibold text-slate-500">
           {path.length} / {size * size}
         </span>
-        <button
-          className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-          onClick={handleReset}
-          disabled={isComplete}
-        >
+        <button className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40" onClick={handleReset} disabled={isComplete}>
           Reset
         </button>
       </div>
@@ -344,12 +322,11 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
       <div
         ref={gridRef}
         className={cn(
-          "relative grid aspect-square w-full max-w-[500px] select-none touch-none rounded-3xl border border-slate-200 bg-white shadow-sm transition-all",
+          "relative grid aspect-square w-full max-w-[95vw] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[850px] xl:max-w-[1000px] select-none touch-none rounded-3xl border border-slate-300 bg-slate-300 shadow-sm transition-all overflow-hidden",
           isComplete && "shadow-md",
           isShaking && "animate-shake border-red-400",
         )}
         style={{
-          // Use CSS grid for layout
           gridTemplateColumns: `repeat(${size}, 1fr)`,
           gap: `${gap}px`,
           padding: `${padding}px`,
@@ -361,29 +338,23 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
         onPointerLeave={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <svg className="pointer-events-none absolute left-0 top-0 z-30 h-full w-full" width="100%" height="100%" viewBox={`0 0 ${totalSize} ${totalSize}`} preserveAspectRatio="none">
-          {segments.map((seg) => {
-            const x1 = padding + seg.c1 * (dynamicCellSize + gap) + dynamicCellSize / 2;
-            const y1 = padding + seg.r1 * (dynamicCellSize + gap) + dynamicCellSize / 2;
-            const x2 = padding + seg.c2 * (dynamicCellSize + gap) + dynamicCellSize / 2;
-            const y2 = padding + seg.r2 * (dynamicCellSize + gap) + dynamicCellSize / 2;
-
-            return (
-              <line
-                key={seg.index}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                strokeWidth={4}
-                strokeLinecap="round"
-                className="stroke-sky-500"
-                style={{
-                  animationDelay: `${seg.index * 30}ms`,
-                }}
-              />
-            );
-          })}
+        <svg className="pointer-events-none absolute left-0 top-0 z-10 h-full w-full" width="100%" height="100%" viewBox={`0 0 ${totalSize} ${totalSize}`} preserveAspectRatio="none">
+          {path.length > 0 && (
+            <path
+              d={path
+                .map((c, i) => {
+                  const x = padding + c.col * (dynamicCellSize + gap) + dynamicCellSize / 2;
+                  const y = padding + c.row * (dynamicCellSize + gap) + dynamicCellSize / 2;
+                  return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+                })
+                .join(" ")}
+              strokeWidth={dynamicCellSize * 0.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              className="stroke-sky-600 transition-all duration-75 ease-linear"
+            />
+          )}
         </svg>
 
         {Array.from({ length: size }, (_, row) =>
@@ -392,9 +363,10 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
             const anchorNumber = anchorMap.get(key);
             const isInPath = pathSet.has(key);
             const pathIdx = getPathIndex(row, col);
-            const isHead = pathIdx === path.length - 1 && path.length > 0;
-            const isStart = anchorNumber === 1;
-            const isEnd = anchorNumber === anchors.length;
+            // const pathIdx = getPathIndex(row, col);
+            // const isHead = pathIdx === path.length - 1 && path.length > 0;
+            // const isStart = anchorNumber === 1;
+            // const isEnd = anchorNumber === anchors.length;
 
             return (
               <div
@@ -402,22 +374,18 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
                 data-row={row}
                 data-col={col}
                 className={cn(
-                  "relative z-20 flex aspect-square w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 transition",
-                  "hover:border-sky-300 hover:bg-slate-100",
-                  anchorNumber !== undefined && "border-sky-300 bg-sky-100",
-                  isInPath && "border-sky-400 bg-sky-200",
-                  isHead && "border-sky-500 bg-sky-300 shadow-sm",
-                  isStart && "border-cyan-300 bg-cyan-100",
-                  isEnd && "border-blue-300 bg-blue-100",
-                  isComplete && "border-teal-300 bg-teal-100",
+                  "relative flex aspect-square w-full items-center justify-center transition-colors duration-200",
+                  // Backgrounds
+                  isInPath ? "bg-sky-100" : "bg-white",
+                  !isComplete && !isInPath && "hover:bg-slate-50",
+                  isComplete && "bg-emerald-50",
                 )}
               >
                 {anchorNumber !== undefined && (
-                  <span className={cn("text-base md:text-lg font-bold text-sky-700", isStart && "text-cyan-700", isEnd && "text-blue-700")}>
-                    {anchorNumber}
-                  </span>
+                  <div className={cn("relative z-20 flex h-[75%] w-[75%] items-center justify-center shadow-sm p-1", "rounded-sm bg-[#f4f4f4] font-bold text-slate-800")}>
+                    <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">{anchorNumber}</span>
+                  </div>
                 )}
-                {isInPath && anchorNumber === undefined && <span className="h-2 w-2 rounded-full bg-sky-500" />}
               </div>
             );
           }),
@@ -425,8 +393,8 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
       </div>
 
       {isComplete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50">
-          <div className="rounded-3xl border border-slate-200 bg-white px-12 py-10 text-center shadow-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50/90 backdrop-blur-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white px-12 py-10 text-center shadow-xl">
             <span className="block text-4xl font-bold text-slate-900">WIN</span>
             <h2 className="mt-3 text-2xl font-semibold text-slate-900">Puzzle Complete!</h2>
             <p className="mt-2 text-sm text-slate-500">Time: {(finalTime / 1000).toFixed(1)}s</p>

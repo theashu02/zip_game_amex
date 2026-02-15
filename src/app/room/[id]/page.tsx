@@ -160,18 +160,12 @@ export default function RoomPage() {
                 {room.players.map((p) => (
                   <div key={p.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 bg-white">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold">
-                        {p.name.charAt(0).toUpperCase()}
-                      </div>
+                      <div className="h-8 w-8 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold">{p.name.charAt(0).toUpperCase()}</div>
                       <span className="font-medium text-slate-700">
                         {p.name} {p.id === myPlayer.id && <span className="opacity-50 text-sm font-normal">(You)</span>}
                       </span>
                     </div>
-                    {p.id === room.hostId && (
-                      <span className="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-sky-200">
-                        HOST
-                      </span>
-                    )}
+                    {p.id === room.hostId && <span className="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-sky-200">HOST</span>}
                   </div>
                 ))}
               </div>
@@ -210,9 +204,7 @@ export default function RoomPage() {
             <div className="mx-auto inline-flex h-24 w-24 items-center justify-center rounded-full bg-sky-100 shadow-sm">
               <Trophy className="h-12 w-12 text-sky-600" />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-black text-slate-800">
-              {room.status === "finished" ? "Game Over!" : "Finished!"}
-            </h1>
+            <h1 className="text-4xl sm:text-5xl font-black text-slate-800">{room.status === "finished" ? "Game Over!" : "Finished!"}</h1>
             <p className="text-slate-500 font-medium">{room.status === "finished" ? "Final Standings" : "Waiting for others..."}</p>
           </div>
 
@@ -226,26 +218,17 @@ export default function RoomPage() {
                   const time = p.finishTime ? ((p.finishTime - room.createdAt) / 1000).toFixed(1) + "s" : "--";
                   const isWinner = i === 0 && p.finished;
                   return (
-                    <div
-                      key={p.id}
-                      className={`flex items-center justify-between p-4 rounded-xl border ${
-                        isWinner ? "bg-sky-50 border-sky-200" : "bg-white border-slate-200"
-                      }`}
-                    >
+                    <div key={p.id} className={`flex items-center justify-between p-4 rounded-xl border ${isWinner ? "bg-sky-50 border-sky-200" : "bg-white border-slate-200"}`}>
                       <div className="flex items-center gap-4">
                         <span className={`text-xl font-bold w-8 text-center ${i === 0 ? "text-yellow-500" : "text-slate-300"}`}>{i + 1}</span>
                         <div>
                           <p className={`font-bold ${p.id === myPlayer.id ? "text-sky-600" : "text-slate-700"}`}>
                             {p.name} {p.id === myPlayer.id && "(You)"}
                           </p>
-                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">
-                            {p.finished ? "Finished" : `Level ${p.currentLevel + 1}/${room.levels.length}`}
-                          </p>
+                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">{p.finished ? "Finished" : `Level ${p.currentLevel + 1}/${room.levels.length}`}</p>
                         </div>
                       </div>
-                      <div className={`font-mono font-bold ${p.finished ? "text-slate-900" : "text-slate-400 italic"}`}>
-                        {p.finished ? time : "..."}
-                      </div>
+                      <div className={`font-mono font-bold ${p.finished ? "text-slate-900" : "text-slate-400 italic"}`}>{p.finished ? time : "..."}</div>
                     </div>
                   );
                 })}
@@ -266,19 +249,17 @@ export default function RoomPage() {
 
   return (
     <main className={`${pageBg} px-4 py-8 flex flex-col items-center`}>
-      <div className="w-full max-w-6xl flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_300px] items-start">
+      <div className="w-full max-w-[1800px] flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_400px] items-start">
         {/* MAIN GAME AREA */}
         <div className="flex flex-col items-center gap-6 w-full">
-          <div className="w-full flex justify-between items-center max-w-[500px]">
+          <div className="w-full flex justify-between items-center max-w-[95vw] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[850px] xl:max-w-[1000px]">
             <h2 className="text-xl font-bold text-slate-700">
               Level {myPlayer.currentLevel + 1} <span className="text-slate-400 text-base font-normal">/ {room.levels.length}</span>
             </h2>
-            <div className="text-xs font-bold font-mono bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full">
-              Room: {room.id}
-            </div>
+            <div className="text-xs font-bold font-mono bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full">Room: {room.id}</div>
           </div>
-          {/* Constrain header width to match grid better on large screens, but allow full width on mobile */}
-          <div className="w-full max-w-[500px]">
+          {/* Constrain header matching grid */}
+          <div className="w-full max-w-[95vw] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[850px] xl:max-w-[1000px]">
             <GameHeader difficulty={currentPuzzle.difficulty} date={currentPuzzle.date} gridSize={currentPuzzle.size} isComplete={false} startTime={room.startedAt} />
           </div>
 
@@ -286,7 +267,7 @@ export default function RoomPage() {
         </div>
 
         {/* SIDEBAR - Now visible on all devices, stacked below on mobile */}
-        <div className="w-full max-w-[500px] lg:max-w-none space-y-4 mx-auto lg:mx-0">
+        <div className="w-full max-w-[90vw] sm:max-w-[520px] md:max-w-[620px] lg:max-w-none space-y-4 mx-auto lg:mx-0">
           <Card className="border-slate-200 bg-white shadow-sm">
             <CardHeader className="pb-3 border-b border-slate-200">
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Live Progress</CardTitle>
