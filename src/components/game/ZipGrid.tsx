@@ -98,14 +98,21 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
       if (isComplete) return;
 
       setPath((prev) => {
-        // 1. Handle clicking/dragging on an EXISTING cell (backtracking or no-op)
+        // 1. Handle clicking/dragging on an EXISTING cell
         const existingIdx = prev.findIndex((c) => c.row === targetRow && c.col === targetCol);
 
         if (existingIdx !== -1) {
-          // If it's the very last cell, do nothing (we are still on it)
+          // If it's the very last cell (current head), do nothing
           if (existingIdx === prev.length - 1) return prev;
-          // Otherwise, we cut the path back to this point (undo/backtrack)
-          return prev.slice(0, existingIdx + 1);
+
+          // STRICT BACKTRACKING: Only allow going back to the immediate previous cell.
+          // This prevents accidental "path resetting" if the user grazes an earlier cell.
+          if (existingIdx === prev.length - 2) {
+            return prev.slice(0, existingIdx + 1);
+          }
+
+          // If touching any other earlier cell, ignore it (don't break the line)
+          return prev;
         }
 
         // 2. Handle adding NEW cells
@@ -395,7 +402,7 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
                 data-row={row}
                 data-col={col}
                 className={cn(
-                  "relative z-20 flex h-[70px] w-[70px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800",
+                  "relative z-20 flex aspect-square w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800",
                   "hover:border-sky-300 hover:bg-slate-100 dark:hover:border-sky-600 dark:hover:bg-slate-700",
                   anchorNumber !== undefined && "border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900",
                   isInPath && "border-sky-400 bg-sky-200 dark:border-sky-600 dark:bg-sky-800",
@@ -405,7 +412,7 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
                   isComplete && "border-teal-300 bg-teal-100 dark:border-teal-700 dark:bg-teal-900",
                 )}
               >
-                {anchorNumber !== undefined && <span className={cn("text-lg font-bold text-sky-700 dark:text-sky-200", isStart && "text-cyan-700 dark:text-cyan-200", isEnd && "text-blue-700 dark:text-blue-200")}>{anchorNumber}</span>}
+                {anchorNumber !== undefined && <span className={cn("text-base md:text-lg font-bold text-sky-700 dark:text-sky-200", isStart && "text-cyan-700 dark:text-cyan-200", isEnd && "text-blue-700 dark:text-blue-200")}>{anchorNumber}</span>}
                 {isInPath && anchorNumber === undefined && <span className="h-2 w-2 rounded-full bg-sky-500" />}
               </div>
             );

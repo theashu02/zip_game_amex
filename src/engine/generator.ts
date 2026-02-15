@@ -122,8 +122,8 @@ export function generatePuzzle(seedStr: string, difficultyOverride?: "easy" | "m
 
   if (difficultyOverride) {
     difficulty = difficultyOverride;
-    // easy=5, medium=6, hard=7
-    size = difficulty === "easy" ? 5 : difficulty === "medium" ? 6 : 7;
+    // easy=5, medium=6, hard=8 (was 7)
+    size = difficulty === "easy" ? 5 : difficulty === "medium" ? 6 : 8;
   } else {
     // Default: treat seedStr as date if possible, else random
     // If it looks like a date, use date logic. Else use hash to pick.
@@ -142,16 +142,18 @@ export function generatePuzzle(seedStr: string, difficultyOverride?: "easy" | "m
         size = 6;
       } else {
         difficulty = "hard";
-        size = 7;
+        size = 8;
       }
     }
   }
 
   // Number of anchors scales with grid size
+  // User requested up to 15 numbers.
   const anchorCounts: Record<number, number> = {
     5: 5,
-    6: 6,
-    7: 8,
+    6: 9,
+    7: 12,
+    8: 15,
   };
 
   let path = findHamiltonianPath(size, rng);

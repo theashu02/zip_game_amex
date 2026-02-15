@@ -51,7 +51,7 @@ export const RoomManager = {
       let difficulty: "easy" | "medium" | "hard" = "medium";
       const progress = i / levelCount;
       if (progress < 0.3) difficulty = "easy";
-      else if (progress > 0.7) difficulty = "hard";
+      else if (progress >= 0.6) difficulty = "hard";
 
       const seed = `room-${roomId}-lvl-${i}`;
       const puzzle = generatePuzzle(seed, difficulty);
