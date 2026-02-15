@@ -7,6 +7,7 @@ import { Elysia, t } from "elysia";
 import { generatePuzzle } from "@/engine/generator";
 import { validatePath } from "@/engine/validator";
 import { getTodayStr } from "@/engine/seeder";
+import { RoomManager } from "./room-manager";
 
 // In-memory leaderboard (resets on cold start — fine for MVP)
 const leaderboards = new Map<string, Array<{ name: string; timeMs: number }>>();
@@ -76,6 +77,10 @@ export const app = new Elysia({ prefix: "/api" })
       const entries = getLeaderboard(today);
 
       // Only allow submission if there's a valid puzzle for today
+      // Validation here is minimal, trusting validated state from client mostly
+      // but ideally we should re-validate path.
+      // For MVP we just trust the client's "I won" signal if we want to save compute,
+      // but let's re-validate to be safe.
       const puzzle = generatePuzzle(today);
       const validation = validatePath(body.path, puzzle.anchors, puzzle.size);
 
@@ -106,6 +111,89 @@ export const app = new Elysia({ prefix: "/api" })
         ),
       }),
     },
+  )
+
+  // --- ROOM ROUTES ---
+  .group("/room", (app) =>
+    app
+      .post(
+        "/create",
+        ({ body }) => {
+          return RoomManager.createRoom(body.hostName, body.levelCount);
+        },
+        {
+          body: t.Object({
+            hostName: t.String(),
+            levelCount: t.Union([t.Literal(3), t.Literal(5), t.Literal(10)]),
+          }),
+        },
+      )
+      .post(
+        "/join",
+        ({ body, set }) => {
+          const result = RoomManager.joinRoom(body.roomId, body.playerName);
+          if (!result) {
+            set.status = 404;
+            return { error: "Room not found or game already started" };
+          }
+          return result;
+        },
+        {
+          body: t.Object({
+            roomId: t.String(),
+            playerName: t.String(),
+          }),
+        },
+      )
+      .get(
+        "/:id",
+        ({ params, set }) => {
+          const room = RoomManager.getRoom(params.id);
+          if (!room) {
+            set.status = 404;
+            return { error: "Room not found" };
+          }
+          return room;
+        },
+        {
+          params: t.Object({
+            id: t.String(),
+          }),
+        },
+      )
+      .post(
+        "/:id/start",
+        ({ params, body, set }) => {
+          const success = RoomManager.startGame(params.id, body.hostId);
+          if (!success) {
+            set.status = 403;
+            return { error: "Only host can start or room not found" };
+          }
+          return { success: true };
+        },
+        {
+          params: t.Object({ id: t.String() }),
+          body: t.Object({ hostId: t.String() }),
+        },
+      )
+      .post(
+        "/:id/progress",
+        ({ params, body, set }) => {
+          const room = RoomManager.submitProgress(params.id, body.playerId, body.levelIndex);
+          if (!room) {
+            set.status = 404;
+            return { error: "Room/Player not found" };
+          }
+          return room;
+        },
+        {
+          params: t.Object({ id: t.String() }),
+          body: t.Object({
+            playerId: t.String(),
+            levelIndex: t.Number(),
+          }),
+        },
+      ),
   );
 
 export type App = typeof app;

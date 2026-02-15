@@ -1,21 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-:root {
-  /* Colors */
-  --bg-primary: #0a0a1a;
-  --bg-secondary: rgba(15, 15, 30, 0.8);
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-muted: rgba(255, 255, 255, 0.35);
-  --accent: #8b5cf6;
-  --accent-glow: rgba(139, 92, 246, 0.3);
-  --success: #10b981;
-  --danger: #f43f5e;
-  --warning: #f59e0b;
-  --border: rgba(255, 255, 255, 0.08);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  /* Spacing */
-  --header-height: 64px;
+:root {
+  --bg-light: #f8fafc;
+  --bg-dark: #020617;
+  --text-light: #0f172a;
+  --text-dark: #f8fafc;
+  --accent: #0ea5e9;
 }
 
 * {
@@ -28,18 +22,20 @@ html,
 body {
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  /* Cold Modern Background */
+  background: radial-gradient(circle at top center, #e0f2fe 0%, #f8fafc 40%, #f1f5f9 100%);
+  color: var(--text-light);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light dark;
 }
 
-body {
-  background-image:
-    radial-gradient(ellipse at 30% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(15, 15, 30, 1) 0%, var(--bg-primary) 100%);
-  background-attachment: fixed;
+@media (prefers-color-scheme: dark) {
+  body {
+    /* Dark Cold Background */
+    background: radial-gradient(circle at top center, #0f172a 0%, #020617 50%, #020617 100%);
+    color: var(--text-dark);
+  }
 }
 
 a {
@@ -57,14 +53,38 @@ button {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #e2e8f0;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: #cbd5e1;
+  border-radius: 0.5rem;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: #94a3b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+/* Animations */
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
