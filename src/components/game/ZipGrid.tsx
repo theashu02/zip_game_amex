@@ -323,17 +323,17 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
     <div className="flex flex-col items-center gap-5">
       <div className="flex w-full items-center justify-center gap-4">
         <button
-          className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
           onClick={handleUndo}
           disabled={path.length === 0 || isComplete}
         >
           Undo
         </button>
-        <span className="min-w-[60px] text-center text-sm font-semibold text-slate-500 dark:text-slate-400">
+        <span className="min-w-[60px] text-center text-sm font-semibold text-slate-500">
           {path.length} / {size * size}
         </span>
         <button
-          className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
           onClick={handleReset}
           disabled={isComplete}
         >
@@ -344,9 +344,9 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
       <div
         ref={gridRef}
         className={cn(
-          "relative grid aspect-square w-full max-w-[500px] select-none touch-none rounded-3xl border border-white/40 bg-white/60 shadow-xl backdrop-blur-sm transition-all dark:border-slate-800 dark:bg-slate-900/50",
-          isComplete && "shadow-2xl shadow-sky-500/10",
-          isShaking && "animate-shake border-red-400 dark:border-red-600",
+          "relative grid aspect-square w-full max-w-[500px] select-none touch-none rounded-3xl border border-slate-200 bg-white shadow-sm transition-all",
+          isComplete && "shadow-md",
+          isShaking && "animate-shake border-red-400",
         )}
         style={{
           // Use CSS grid for layout
@@ -377,7 +377,7 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
                 y2={y2}
                 strokeWidth={4}
                 strokeLinecap="round"
-                className="stroke-sky-500/80"
+                className="stroke-sky-500"
                 style={{
                   animationDelay: `${seg.index * 30}ms`,
                 }}
@@ -402,17 +402,21 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
                 data-row={row}
                 data-col={col}
                 className={cn(
-                  "relative z-20 flex aspect-square w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800",
-                  "hover:border-sky-300 hover:bg-slate-100 dark:hover:border-sky-600 dark:hover:bg-slate-700",
-                  anchorNumber !== undefined && "border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900",
-                  isInPath && "border-sky-400 bg-sky-200 dark:border-sky-600 dark:bg-sky-800",
-                  isHead && "border-sky-500 bg-sky-300 shadow-sm dark:border-sky-500 dark:bg-sky-700",
-                  isStart && "border-cyan-300 bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900",
-                  isEnd && "border-blue-300 bg-blue-100 dark:border-blue-700 dark:bg-blue-900",
-                  isComplete && "border-teal-300 bg-teal-100 dark:border-teal-700 dark:bg-teal-900",
+                  "relative z-20 flex aspect-square w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 transition",
+                  "hover:border-sky-300 hover:bg-slate-100",
+                  anchorNumber !== undefined && "border-sky-300 bg-sky-100",
+                  isInPath && "border-sky-400 bg-sky-200",
+                  isHead && "border-sky-500 bg-sky-300 shadow-sm",
+                  isStart && "border-cyan-300 bg-cyan-100",
+                  isEnd && "border-blue-300 bg-blue-100",
+                  isComplete && "border-teal-300 bg-teal-100",
                 )}
               >
-                {anchorNumber !== undefined && <span className={cn("text-base md:text-lg font-bold text-sky-700 dark:text-sky-200", isStart && "text-cyan-700 dark:text-cyan-200", isEnd && "text-blue-700 dark:text-blue-200")}>{anchorNumber}</span>}
+                {anchorNumber !== undefined && (
+                  <span className={cn("text-base md:text-lg font-bold text-sky-700", isStart && "text-cyan-700", isEnd && "text-blue-700")}>
+                    {anchorNumber}
+                  </span>
+                )}
                 {isInPath && anchorNumber === undefined && <span className="h-2 w-2 rounded-full bg-sky-500" />}
               </div>
             );
@@ -421,11 +425,11 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
       </div>
 
       {isComplete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-          <div className="rounded-3xl border border-slate-200 bg-white px-12 py-10 text-center shadow-xl dark:border-slate-800 dark:bg-slate-900">
-            <span className="block text-4xl font-bold text-slate-900 dark:text-slate-50">WIN</span>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-50">Puzzle Complete!</h2>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Time: {(finalTime / 1000).toFixed(1)}s</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50">
+          <div className="rounded-3xl border border-slate-200 bg-white px-12 py-10 text-center shadow-md">
+            <span className="block text-4xl font-bold text-slate-900">WIN</span>
+            <h2 className="mt-3 text-2xl font-semibold text-slate-900">Puzzle Complete!</h2>
+            <p className="mt-2 text-sm text-slate-500">Time: {(finalTime / 1000).toFixed(1)}s</p>
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ export default function HowToPlay() {
   return (
     <>
       <button
-        className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full border border-slate-300 bg-sky-600 text-lg font-bold text-white shadow-md transition hover:scale-105 hover:bg-sky-700 dark:border-slate-700 dark:bg-sky-500 dark:text-slate-950"
+        className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full border border-slate-300 bg-sky-600 text-lg font-bold text-white shadow-sm transition hover:scale-105 hover:bg-sky-700"
         onClick={() => setIsOpen(true)}
         aria-label="How to play"
       >
@@ -16,58 +16,58 @@ export default function HowToPlay() {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-50" onClick={() => setIsOpen(false)}>
           <div
-            className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-slate-900 shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
+            className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-slate-900 shadow-md"
             onClick={(event) => event.stopPropagation()}
           >
             <button
-              className="absolute right-4 top-4 rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-sm text-slate-600 transition hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-slate-50"
+              className="absolute right-4 top-4 rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-sm text-slate-600 transition hover:text-slate-900"
               onClick={() => setIsOpen(false)}
             >
               X
             </button>
             <h2 className="text-2xl font-semibold">How to Play</h2>
 
-            <div className="mt-6 flex flex-col gap-4 text-sm text-slate-600 dark:text-slate-300">
+            <div className="mt-6 flex flex-col gap-4 text-sm text-slate-600">
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700 dark:border-sky-800 dark:bg-sky-900 dark:text-sky-200">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700">
                   1
                 </span>
                 <p>
-                  Start from the cell marked <strong className="text-slate-900 dark:text-slate-50">1</strong> and draw a continuous path to
+                  Start from the cell marked <strong className="text-slate-900">1</strong> and draw a continuous path to
                   connect all numbered cells in order.
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700 dark:border-sky-800 dark:bg-sky-900 dark:text-sky-200">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700">
                   2
                 </span>
                 <p>
-                  Your path must visit <strong className="text-slate-900 dark:text-slate-50">every cell</strong> in the grid exactly once.
+                  Your path must visit <strong className="text-slate-900">every cell</strong> in the grid exactly once.
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700 dark:border-sky-800 dark:bg-sky-900 dark:text-sky-200">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700">
                   3
                 </span>
                 <p>
-                  You can only move <strong className="text-slate-900 dark:text-slate-50">horizontally or vertically</strong> - no diagonal
+                  You can only move <strong className="text-slate-900">horizontally or vertically</strong> - no diagonal
                   moves allowed.
                 </p>
               </div>
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700 dark:border-sky-800 dark:bg-sky-900 dark:text-sky-200">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 text-xs font-bold text-sky-700">
                   4
                 </span>
                 <p>
-                  Click on a visited cell to <strong className="text-slate-900 dark:text-slate-50">backtrack</strong>, or use the Undo button.
+                  Click on a visited cell to <strong className="text-slate-900">backtrack</strong>, or use the Undo button.
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-              <h3 className="mb-2 text-base font-semibold text-slate-900 dark:text-slate-50">Tips</h3>
+            <div className="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-500">
+              <h3 className="mb-2 text-base font-semibold text-slate-900">Tips</h3>
               <ul className="flex list-none flex-col gap-2">
                 <li className="relative pl-4 before:absolute before:left-0 before:text-sky-500 before:content-['->']">
                   Plan your route before drawing - it helps avoid dead ends.

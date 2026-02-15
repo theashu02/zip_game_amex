@@ -6,9 +6,7 @@
 
 :root {
   --bg-light: #f8fafc;
-  --bg-dark: #020617;
   --text-light: #0f172a;
-  --text-dark: #f8fafc;
   --accent: #0ea5e9;
 }
 
@@ -22,20 +20,10 @@ html,
 body {
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  /* Cold Modern Background */
-  background: radial-gradient(circle at top center, #e0f2fe 0%, #f8fafc 40%, #f1f5f9 100%);
+  background: #f8fafc;
   color: var(--text-light);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    /* Dark Cold Background */
-    background: radial-gradient(circle at top center, #0f172a 0%, #020617 50%, #020617 100%);
-    color: var(--text-dark);
-  }
 }
 
 a {
@@ -58,24 +46,13 @@ button {
 
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 0.5rem;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-track {
-    background: #0f172a;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #334155;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
-  }
-}
 
 /* Animations */
 @keyframes shake {
