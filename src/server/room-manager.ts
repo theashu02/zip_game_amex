@@ -1,5 +1,5 @@
-import { generatePuzzle } from "@/engine/generator";
-import type { Puzzle } from "@/engine/types";
+import { generatePuzzle } from "../engine/generator";
+import type { Puzzle } from "../engine/types";
 
 export interface RoomPlayer {
   id: string;
@@ -19,8 +19,54 @@ export interface Room {
   startedAt?: number;
 }
 
-// In-memory store
-const rooms = new Map<string, Room>();
+export interface RoomSummary {
+  id: string;
+  hostId: string;
+  players: RoomPlayer[];
+  status: "waiting" | "playing" | "finished";
+  createdAt: number;
+  startedAt?: number;
+  levelCount: number;
+}
+
+export function toRoomSummary(room: Room): RoomSummary {
+  return {
+    id: room.id,
+    hostId: room.hostId,
+    players: room.players.map((player) => ({ ...player })),
+    status: room.status,
+    createdAt: room.createdAt,
+    startedAt: room.startedAt,
+    levelCount: room.levels.length,
+  };
+}
+
+type RoomListener = (room: Room) => void;
+type RoomStore = {
+  rooms: Map<string, Room>;
+  listeners: Set<RoomListener>;
+};
+
+const globalForRooms = globalThis as typeof globalThis & {
+  __zipRoomStore?: RoomStore;
+};
+
+const roomStore: RoomStore =
+  globalForRooms.__zipRoomStore ??
+  (globalForRooms.__zipRoomStore = {
+    rooms: new Map<string, Room>(),
+    listeners: new Set<RoomListener>(),
+  });
+
+// In-memory store (shared across module instances in dev)
+const rooms = roomStore.rooms;
+const roomListeners = roomStore.listeners;
+
+function emitRoomUpdate(room: Room) {
+  for (const listener of roomListeners) {
+    listener(room);
+  }
+}
 
 // Helper to generate a short 6-character room code
 function generateRoomCode(): string {
@@ -38,6 +84,11 @@ function generateRoomCode(): string {
 }
 
 export const RoomManager = {
+  onRoomUpdated(listener: RoomListener) {
+    roomListeners.add(listener);
+    return () => roomListeners.delete(listener);
+  },
+
   createRoom(hostName: string, levelCount: 3 | 5 | 10): { room: Room; player: RoomPlayer } {
     const roomId = generateRoomCode();
 
@@ -75,6 +126,7 @@ export const RoomManager = {
     };
 
     rooms.set(roomId, room);
+    emitRoomUpdate(room);
     return { room, player: hostPlayer };
   },
 
@@ -94,6 +146,7 @@ export const RoomManager = {
     };
 
     room.players.push(player);
+    emitRoomUpdate(room);
     return { room, player };
   },
 
@@ -103,6 +156,7 @@ export const RoomManager = {
 
     room.status = "playing";
     room.startedAt = Date.now();
+    emitRoomUpdate(room);
     return true;
   },
 
@@ -118,6 +172,9 @@ export const RoomManager = {
     // Actually, `elysia-app` should call this only after validation passes.
 
     // Update progress
+    const prevLevel = player.currentLevel;
+    const prevStatus = room.status;
+
     if (levelIndex === player.currentLevel) {
       player.currentLevel += 1;
       if (player.currentLevel >= room.levels.length) {
@@ -131,6 +188,9 @@ export const RoomManager = {
       room.status = "finished";
     }
 
+    if (player.currentLevel !== prevLevel || room.status !== prevStatus) {
+      emitRoomUpdate(room);
+    }
     return room;
   },
 };

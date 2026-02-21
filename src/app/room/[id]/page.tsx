@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import ZipGrid from "@/components/game/ZipGrid";
 import GameHeader from "@/components/game/GameHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Clock, CheckCircle2, Loader2, Copy } from "lucide-react";
-import type { Puzzle } from "@/engine/types";
+
+function LoadingFallback() {
+  return (
+    <main className={"min-h-screen w-full bg-slate-50 text-slate-900 flex items-center justify-center"}>
+      <div className="bg-white p-6 rounded-full border border-slate-200 shadow-sm">
+        <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+      </div>
+    </main>
+  );
+}
+import type { Puzzle, Cell } from "@/engine/types";
 
 // Temporarily defining types here to avoid import issues from server file used in client
 interface ClientRoomPlayer {
@@ -18,19 +28,36 @@ interface ClientRoomPlayer {
   finishTime?: number;
 }
 
-interface ClientRoom {
+interface ClientRoomBase {
   id: string;
   hostId: string;
-  levels: Puzzle[];
   players: ClientRoomPlayer[];
   status: "waiting" | "playing" | "finished";
   createdAt: number;
   startedAt?: number;
 }
 
+interface ClientRoom extends ClientRoomBase {
+  levels: Puzzle[];
+}
+
+interface ClientRoomSummary extends ClientRoomBase {
+  levelCount: number;
+}
+
+type RoomWsMessage = { type: "room:update"; room: ClientRoomSummary } | { type: "error"; error: string };
+
 const pageBg = "min-h-screen w-full bg-slate-50 text-slate-900";
 
 export default function RoomPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <RoomPageContent />
+    </Suspense>
+  );
+}
+
+function RoomPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -40,34 +67,95 @@ export default function RoomPage() {
   const [room, setRoom] = useState<ClientRoom | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
 
-  // Polling
-  useEffect(() => {
-    if (!roomId) return;
-
-    const fetchRoom = async () => {
+  const fetchRoom = useCallback(
+    async (includeLevels: boolean) => {
+      if (!roomId) return;
       try {
-        const res = await fetch(`/api/room/${roomId}`);
+        const query = includeLevels ? "?includeLevels=1" : "";
+        const res = await fetch(`/api/room/${roomId}${query}`);
         if (res.status === 404) {
           setError("Room not found");
           return;
         }
         if (!res.ok) throw new Error("Failed to fetch room");
         const data = await res.json();
-        setRoom(data);
+
+        if (includeLevels) {
+          setRoom(data);
+          return;
+        }
+
+        const summary = data as ClientRoomSummary;
+        setRoom((prev) => {
+          if (!prev) return prev;
+          const { levelCount: _levelCount, ...rest } = summary;
+          return { ...prev, ...rest, levels: prev.levels };
+        });
       } catch (err) {
         console.error(err);
       }
+    },
+    [roomId],
+  );
+
+  useEffect(() => {
+    fetchRoom(true);
+  }, [fetchRoom]);
+
+  useEffect(() => {
+    if (!roomId || !playerId) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${window.location.host}/ws?roomId=${roomId}&playerId=${playerId}`);
+
+    ws.onopen = () => setWsConnected(true);
+    ws.onclose = () => setWsConnected(false);
+    ws.onerror = () => {
+      ws.close();
     };
 
-    fetchRoom();
-    const interval = setInterval(fetchRoom, 2000); // Poll every 2s
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as RoomWsMessage;
+        if (message.type === "room:update") {
+          const summary = message.room;
+          setRoom((prev) => {
+            if (!prev) return prev;
+            const { levelCount: _levelCount, ...rest } = summary;
+            return { ...prev, ...rest, levels: prev.levels };
+          });
+        } else if (message.type === "error") {
+          setError(message.error);
+        }
+      } catch (err) {
+        console.error("Failed to parse websocket message", err);
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [roomId, playerId]);
+
+  useEffect(() => {
+    if (!roomId || wsConnected || room) return;
+    const interval = setInterval(() => fetchRoom(false), 5000);
     return () => clearInterval(interval);
-  }, [roomId]);
+  }, [roomId, wsConnected, fetchRoom, room]);
 
   const myPlayer = useMemo(() => {
     return room?.players.find((p) => p.id === playerId);
   }, [room, playerId]);
+
+  // Keep a ref to myPlayer data so handleLevelComplete doesn't need room/myPlayer as deps
+  const myPlayerRef = useRef<{ id: string; currentLevel: number } | null>(null);
+  useEffect(() => {
+    if (myPlayer) {
+      myPlayerRef.current = { id: myPlayer.id, currentLevel: myPlayer.currentLevel };
+    }
+  }, [myPlayer]);
 
   const startGame = async () => {
     if (!room || !myPlayer) return;
@@ -84,22 +172,26 @@ export default function RoomPage() {
     }
   };
 
-  const handleLevelComplete = useCallback(async () => {
-    if (!room || !myPlayer) return;
+  const handleLevelComplete = useCallback(
+    async (_path: Cell[], _timeMs: number) => {
+      const mp = myPlayerRef.current;
+      if (!mp) return;
 
-    try {
-      await fetch(`/api/room/${roomId}/progress`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playerId: myPlayer.id,
-          levelIndex: myPlayer.currentLevel,
-        }),
-      });
-    } catch (err) {
-      console.error("Failed to submit progress", err);
-    }
-  }, [room, myPlayer, roomId]);
+      try {
+        await fetch(`/api/room/${roomId}/progress`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            playerId: mp.id,
+            levelIndex: mp.currentLevel,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to submit progress", err);
+      }
+    },
+    [roomId],
+  );
 
   const copyCode = () => {
     navigator.clipboard.writeText(roomId);
@@ -248,18 +340,18 @@ export default function RoomPage() {
   const currentPuzzle = room.levels[myPlayer.currentLevel];
 
   return (
-    <main className={`${pageBg} px-4 py-8 flex flex-col items-center`}>
-      <div className="w-full max-w-[1800px] flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_400px] items-start">
+    <main className={`${pageBg} px-2 sm:px-4 py-6 flex flex-col items-center`}>
+      <div className="w-full max-w-[2000px] flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_400px] items-start">
         {/* MAIN GAME AREA */}
         <div className="flex flex-col items-center gap-6 w-full">
-          <div className="w-full flex justify-between items-center max-w-[95vw] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[850px] xl:max-w-[1000px]">
+          <div className="w-full flex justify-between items-center max-w-[98vw] sm:max-w-[650px] md:max-w-[800px] lg:max-w-[1000px] xl:max-w-[1200px]">
             <h2 className="text-xl font-bold text-slate-700">
               Level {myPlayer.currentLevel + 1} <span className="text-slate-400 text-base font-normal">/ {room.levels.length}</span>
             </h2>
             <div className="text-xs font-bold font-mono bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full">Room: {room.id}</div>
           </div>
           {/* Constrain header matching grid */}
-          <div className="w-full max-w-[95vw] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[850px] xl:max-w-[1000px]">
+          <div className="w-full max-w-[98vw] sm:max-w-[650px] md:max-w-[800px] lg:max-w-[1000px] xl:max-w-[1200px]">
             <GameHeader difficulty={currentPuzzle.difficulty} date={currentPuzzle.date} gridSize={currentPuzzle.size} isComplete={false} startTime={room.startedAt} />
           </div>
 

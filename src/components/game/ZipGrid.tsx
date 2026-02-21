@@ -322,7 +322,7 @@ export default function ZipGrid({ puzzle, onComplete, startTime: propStartTime }
       <div
         ref={gridRef}
         className={cn(
-          "relative grid aspect-square w-full max-w-[95vw] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[850px] xl:max-w-[1000px] select-none touch-none rounded-3xl border border-slate-300 bg-slate-300 shadow-sm transition-all overflow-hidden",
+          "relative grid aspect-square w-full max-w-[98vw] sm:max-w-[650px] md:max-w-[800px] lg:max-w-[1000px] xl:max-w-[1200px] select-none touch-none rounded-3xl border border-slate-300 bg-slate-300 shadow-sm transition-all overflow-hidden",
           isComplete && "shadow-md",
           isShaking && "animate-shake border-red-400",
         )}

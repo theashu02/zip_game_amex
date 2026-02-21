@@ -4,10 +4,10 @@
  */
 
 import { Elysia, t } from "elysia";
-import { generatePuzzle } from "@/engine/generator";
-import { validatePath } from "@/engine/validator";
-import { getTodayStr } from "@/engine/seeder";
-import { RoomManager } from "./room-manager";
+import { generatePuzzle } from "../engine/generator";
+import { validatePath } from "../engine/validator";
+import { getTodayStr } from "../engine/seeder";
+import { RoomManager, toRoomSummary } from "./room-manager";
 
 // In-memory leaderboard (resets on cold start — fine for MVP)
 const leaderboards = new Map<string, Array<{ name: string; timeMs: number }>>();
@@ -147,18 +147,24 @@ export const app = new Elysia({ prefix: "/api" })
       )
       .get(
         "/:id",
-        ({ params, set }) => {
+        ({ params, query, set }) => {
           const room = RoomManager.getRoom(params.id);
           if (!room) {
             set.status = 404;
             return { error: "Room not found" };
           }
-          return room;
+          const includeLevels = query?.includeLevels === "1" || query?.includeLevels === "true";
+          return includeLevels ? room : toRoomSummary(room);
         },
         {
           params: t.Object({
             id: t.String(),
           }),
+          query: t.Optional(
+            t.Object({
+              includeLevels: t.Optional(t.String()),
+            }),
+          ),
         },
       )
       .post(
@@ -184,7 +190,7 @@ export const app = new Elysia({ prefix: "/api" })
             set.status = 404;
             return { error: "Room/Player not found" };
           }
-          return room;
+          return toRoomSummary(room);
         },
         {
           params: t.Object({ id: t.String() }),
